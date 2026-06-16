@@ -293,8 +293,38 @@ var CACHE_KEY='om_sc_pub_cache';
 
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
+/* ── view tracking: handle ?notrack=1 and log this visit ── */
+window.hillsNoop=function(){};
+(function(){
+  var params=new URLSearchParams(window.location.search);
+  if(params.get('notrack')==='1'){
+    try{localStorage.setItem('sc_no_track','1');}catch(e){}
+  }
+  var optedOut=false;
+  try{optedOut=localStorage.getItem('sc_no_track')==='1';}catch(e){}
+  if(!optedOut){
+    fetch(SCRIPT_URL+'?action=logview').catch(function(){
+      var s=document.createElement('script');
+      s.src=SCRIPT_URL+'?action=logview&callback=hillsNoop';
+      document.head.appendChild(s);
+    });
+  }
+})();
+
 /* ── BOOT: fetch showcase — fetch first, JSONP fallback, then cache ── */
 window.addEventListener('DOMContentLoaded',function(){
+
+  /* show a small confirmation if this device just opted out */
+  try{
+    var p=new URLSearchParams(window.location.search);
+    if(p.get('notrack')==='1'){
+      var banner=document.createElement('div');
+      banner.textContent='\u2713 This device will no longer be counted in page views';
+      banner.style.cssText='position:fixed;top:10px;left:50%;transform:translateX(-50%);background:#1a3a2a;color:#fff;font-size:12px;padding:8px 16px;border-radius:99px;z-index:999;box-shadow:0 2px 10px rgba(0,0,0,.2)';
+      document.body.appendChild(banner);
+      setTimeout(function(){banner.style.transition='opacity .4s';banner.style.opacity='0';setTimeout(function(){banner.remove();},400);},2500);
+    }
+  }catch(e){}
 
   window.hillsShowcaseCallback=function(data){
     if(data&&data.items&&data.items.length){
